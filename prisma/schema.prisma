@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// SQLite does not support enums — enum fields are stored as String.
+// Valid values are enforced at the application layer (Zod / validations.ts).
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("TEACHER")   // TEACHER | DIRECTOR | ADMIN
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reports Report[]
+
+  @@map("users")
+}
+
+model Student {
+  id          String   @id @default(cuid())
+  name        String
+  grade       String   @default("OTHER")         // Grade enum values
+  school      String?
+  subject     String
+  level       String   @default("INTERMEDIATE")  // Level enum values
+  parentName  String?
+  parentPhone String?
+  defaultTone String   @default("FRIENDLY")      // DefaultTone enum values
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reports Report[]
+
+  @@map("students")
+}
+
+model Report {
+  id                String   @id @default(cuid())
+  studentId         String
+  userId            String?
+  subject           String   @default("")
+  weekStart         DateTime
+  weekEnd           DateTime
+  classContent      String
+  homeworkStatus    String   @default("NOT_ASSIGNED") // HomeworkStatus enum values
+  homeworkNote      String?
+  testScore         Int?
+  attitude          String   @default("GOOD")         // Attitude enum values
+  understanding     String   @default("GOOD")         // Understanding enum values
+  absenceStatus     String   @default("PRESENT")      // AbsenceStatus enum values
+  makeupClassStatus String   @default("NOT_NEEDED")   // MakeupStatus enum values
+  nextPlan          String?
+  teacherKeywords   String?
+  parentReportText  String?
+  internalMemoText  String?
+  isSent            Boolean  @default(false)
+  sentAt            DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id])
+
+  @@map("reports")
+}
