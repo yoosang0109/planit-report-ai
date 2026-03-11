@@ -2,6 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { ReportHistoryClient } from "@/features/reports/ReportHistoryClient";
 
+export const dynamic = "force-dynamic";
+
 async function getReports(studentId?: string) {
   return prisma.report.findMany({
     where: studentId ? { studentId } : undefined,

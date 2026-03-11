@@ -15,10 +15,10 @@ export async function GET(request: Request) {
         ...(search
           ? {
               OR: [
-                { name: { contains: search, mode: "insensitive" } },
-                { subject: { contains: search, mode: "insensitive" } },
-                { school: { contains: search, mode: "insensitive" } },
-                { parentName: { contains: search, mode: "insensitive" } },
+                { name: { contains: search } },
+                { subject: { contains: search } },
+                { school: { contains: search } },
+                { parentName: { contains: search } },
               ],
             }
           : {}),

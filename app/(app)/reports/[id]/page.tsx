@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { ReportDetailClient } from "@/features/reports/ReportDetailClient";
 import { gradeLabel } from "@/lib/display";
 
+export const dynamic = "force-dynamic";
+
 async function getReport(id: string) {
   return prisma.report.findUnique({
     where: { id },
