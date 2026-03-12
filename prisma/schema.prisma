@@ -69,6 +69,7 @@ model Report {
   teacherKeywords   String?
   parentReportText  String?
   internalMemoText  String?
+  toneStyle         String   @default("warm")
   isSent            Boolean  @default(false)
   sentAt            DateTime?
   createdAt         DateTime @default(now())

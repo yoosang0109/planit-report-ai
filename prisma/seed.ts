@@ -103,6 +103,7 @@ async function main() {
       teacherKeywords: "친절한 톤, 성장 중심 피드백",
       parentReportText: "이번 주에는 과거시제와 독해를 중심으로 안정적으로 학습했습니다.",
       internalMemoText: "- Tense review solid\n- Needs more writing drills",
+      toneStyle: "warm",
     },
     {
       studentIndex: 1,
@@ -120,6 +121,7 @@ async function main() {
       teacherKeywords: "구체적, 차분한",
       parentReportText: "문법 이해도는 양호하며, 서술형 완성도를 높이는 단계입니다.",
       internalMemoText: "- Strong grammar base\n- Follow up on written responses",
+      toneStyle: "professional",
     },
   ];
 
@@ -155,6 +157,7 @@ async function main() {
         teacherKeywords: template.teacherKeywords,
         parentReportText: template.parentReportText,
         internalMemoText: template.internalMemoText,
+        toneStyle: template.toneStyle,
       },
     });
   }

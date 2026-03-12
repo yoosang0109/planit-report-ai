@@ -1,4 +1,4 @@
-import type { ReportInput } from "./types";
+import type { PreviousReportContext, ReportInput, ToneStyle } from "./types";
 
 const HOMEWORK_LABELS: Record<string, string> = {
   COMPLETE: "완료",
@@ -34,15 +34,63 @@ const MAKEUP_LABELS: Record<string, string> = {
   SKIPPED: "진행 안 함",
 };
 
-export const parentSystemPrompt = `You are a professional Korean language academy teacher writing a weekly report for a student's parent.
+const TONE_STYLE_GUIDE: Record<ToneStyle, string> = {
+  warm: "따뜻하고 배려 있는 어조. 학부모가 안심할 수 있는 정서적 표현을 적절히 포함",
+  professional: "교사의 전문성이 드러나는 명확하고 단정한 어조. 과장 없이 사실 중심",
+  encouraging: "학생의 노력을 적극적으로 인정하고 동기부여하는 어조",
+  calm: "차분하고 절제된 어조. 감정 표현은 과하지 않게 안정적으로 전달",
+  "growth-focused": "성장 과정과 개선 포인트를 균형 있게 강조하는 어조",
+};
 
-Rules (MUST follow):
-- Write ENTIRELY in Korean (한국어). Do NOT use English.
-- Prose style only. NO bullet points, NO numbered lists, NO headers.
-- 3 to 4 paragraphs: (1) greeting + this week's class summary, (2) homework and test results, (3) attitude, understanding, strengths/weaknesses, (4) encouragement + next week preview and closing.
-- Tone: warm, professional, trustworthy. NOT robotic. NOT excessively flattering.
-- Reflect any teacher keywords naturally into the tone — do NOT copy them verbatim.
-- Length: 250 ~ 400 Korean characters per paragraph. Total 4 paragraphs.`;
+const BANNED_CLICHES = [
+  "꾸준히 성장하고 있습니다",
+  "성실하게 잘 따라오고 있습니다",
+  "앞으로도 기대됩니다",
+] as const;
+
+export function buildParentSystemPrompt(toneStyle: ToneStyle, recentReports: PreviousReportContext[]): string {
+  const recentSummary = recentReports.length === 0
+    ? "최근 리포트 참고 데이터 없음"
+    : recentReports
+      .map((r, idx) => {
+        const praise = r.frequentPraisePhrases?.join(", ") || "없음";
+        return [
+          `- 최근 ${idx + 1}주 toneStyle: ${r.toneStyle ?? "unknown"}`,
+          `  시작 문장: ${r.openingSentence ?? "없음"}`,
+          `  마무리 문장: ${r.closingSentence ?? "없음"}`,
+          `  자주 쓴 칭찬 표현: ${praise}`,
+        ].join("\n");
+      })
+      .join("\n");
+
+  return `You are a professional Korean academy teacher writing a weekly report for a student's parent.
+
+Primary objective:
+- Keep facts and report structure stable.
+- Change writing feel and phrasing week-to-week to avoid repetitive AI-like wording.
+
+Tone style for this generation: ${toneStyle}
+Style guide: ${TONE_STYLE_GUIDE[toneStyle]}
+
+Hard rules (MUST follow):
+- Write ENTIRELY in Korean.
+- Keep 4-paragraph structure:
+  1) greeting + this week's class summary
+  2) homework/test facts
+  3) attitude/understanding strengths & gaps
+  4) encouragement + next-week preview + closing
+- Keep factual details accurate from input. Do not invent scores or events.
+- DO NOT reuse same opening sentence from recent reports.
+- DO NOT reuse same closing sentence from recent reports.
+- Minimize repeating praise phrases used recently.
+- If one of the banned clichés appears in recent reports, avoid using it again.
+
+Banned cliché phrases to avoid repeating:
+${BANNED_CLICHES.map((p) => `- ${p}`).join("\n")}
+
+Recent report references (last up to 3):
+${recentSummary}`;
+}
 
 export const memoSystemPrompt = `You are an experienced academy teacher writing a concise internal weekly note for staff.
 

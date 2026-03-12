@@ -47,6 +47,8 @@ interface PreviewState {
   internalMemoText: string;
 }
 
+type ToneStyle = "warm" | "professional" | "encouraging" | "calm" | "growth-focused";
+
 interface NewReportClientProps {
   students: Student[];
   preselectedStudentId?: string;
@@ -195,6 +197,7 @@ export function NewReportClient({ students, preselectedStudentId }: NewReportCli
   const [markingSent, setMarkingSent] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState<"parent" | "memo" | null>(null);
+  const [toneStyle, setToneStyle] = useState<ToneStyle | null>(null);
 
   // ------ Validate minimum required fields ------
   const canSave = !!studentId && !!form.weekStart && !!form.weekEnd && form.classContent.trim().length > 0;
@@ -218,6 +221,7 @@ export function NewReportClient({ students, preselectedStudentId }: NewReportCli
       teacherKeywords: form.teacherKeywords || undefined,
       parentReportText: preview.parentReportText || undefined,
       internalMemoText: preview.internalMemoText || undefined,
+      toneStyle: toneStyle ?? undefined,
     };
   }
 
@@ -269,6 +273,7 @@ export function NewReportClient({ students, preselectedStudentId }: NewReportCli
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          studentId: selectedStudent.id,
           studentName: selectedStudent.name,
           subject: form.subject || selectedStudent.subject,
           weekRange,
@@ -290,7 +295,8 @@ export function NewReportClient({ students, preselectedStudentId }: NewReportCli
         parentReportText: data.data.parentReport,
         internalMemoText: data.data.internalMemo,
       });
-      toast("AI report generated ✨", "success");
+      setToneStyle((data.data.toneStyle as ToneStyle | undefined) ?? null);
+      toast(`AI report generated ✨ (${data.data.toneStyle ?? "warm"})`, "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "AI generation failed", "error");
     } finally {
@@ -616,6 +622,7 @@ export function NewReportClient({ students, preselectedStudentId }: NewReportCli
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge isSent={isSent} />
+                {toneStyle && <span className="badge badge-gray text-[10px] uppercase">style: {toneStyle}</span>}
                 {savedReportId && (
                   <button
                     className="btn-secondary text-xs py-1.5 px-3"
