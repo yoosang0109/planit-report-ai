@@ -3,6 +3,7 @@ import { generateReportSchema } from "@/lib/validations";
 import { generateReport, AIGenerationError, type ReportInput } from "@/lib/ai/report-generator";
 import { successResponse, errorResponse, validationErrorResponse } from "@/lib/api-response";
 import { ZodError } from "zod";
+import { sanitizeErrorForLog } from "@/lib/safe-log";
 
 export async function POST(request: Request) {
   try {
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
     if (err instanceof ZodError) return validationErrorResponse(err);
     if (err instanceof AIGenerationError) return errorResponse(err.message, 502);
 
-    console.error("[reports/generate]", err);
+    console.error("[reports/generate]", sanitizeErrorForLog(err));
     return errorResponse("Failed to generate report", 500);
   }
 }

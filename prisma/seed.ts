@@ -2,10 +2,30 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+async function upsertStudentByName(data: {
+  name: string;
+  grade: string;
+  school: string;
+  subject: string;
+  level: string;
+  parentName: string;
+  parentPhone: string;
+  defaultTone: string;
+  notes: string;
+  isActive: boolean;
+}) {
+  const existing = await prisma.student.findFirst({ where: { name: data.name } });
+
+  if (existing) {
+    return prisma.student.update({ where: { id: existing.id }, data });
+  }
+
+  return prisma.student.create({ data });
+}
+
 async function main() {
   console.log("🌱 Seeding database...");
 
-  // --- Default admin user --------------------------------------------------
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@planit.academy" },
     update: {},
@@ -19,7 +39,7 @@ async function main() {
 
   console.log(`✓ User: ${adminUser.name}`);
 
-  // --- Students ------------------------------------------------------------
+  // NOTE: below values are demo-only fake data (no real PII)
   const studentsData = [
     {
       name: "김민준",
@@ -28,7 +48,7 @@ async function main() {
       subject: "영어",
       level: "INTERMEDIATE",
       parentName: "김지수",
-      parentPhone: "010-1234-5678",
+      parentPhone: "010-0000-0001",
       defaultTone: "FRIENDLY",
       notes: "발음 교정 집중 필요. 수업 참여도 높음.",
       isActive: true,
@@ -40,7 +60,7 @@ async function main() {
       subject: "영어",
       level: "UPPER_INTERMEDIATE",
       parentName: "이미경",
-      parentPhone: "010-2345-6789",
+      parentPhone: "010-0000-0002",
       defaultTone: "FORMAL",
       notes: "문법 우수, 작문 연습 강화 필요.",
       isActive: true,
@@ -52,47 +72,94 @@ async function main() {
       subject: "수학",
       level: "ADVANCED",
       parentName: "박성진",
-      parentPhone: "010-3456-7890",
+      parentPhone: "010-0000-0003",
       defaultTone: "ENCOURAGING",
       notes: "자신감 부족. 긍정적 피드백 강조.",
       isActive: true,
     },
-    {
-      name: "최하은",
-      grade: "MIDDLE_2",
-      school: "연세중학교",
-      subject: "영어",
-      level: "ELEMENTARY",
-      parentName: "최은지",
-      parentPhone: "010-4567-8901",
-      defaultTone: "DETAILED",
-      notes: "스펠링 반복 실수. 추가 어휘 연습 권장.",
-      isActive: true,
-    },
-    {
-      name: "정우진",
-      grade: "HIGH_1",
-      school: "서강고등학교",
-      subject: "영어",
-      level: "INTERMEDIATE",
-      parentName: "정현수",
-      parentPhone: "010-5678-9012",
-      defaultTone: "FORMAL",
-      notes: "수능 준비 중점. 독해 강화.",
-      isActive: true,
-    },
   ];
 
+  const students = [];
   for (const data of studentsData) {
-    const existing = await prisma.student.findFirst({ where: { name: data.name } });
-    const student = await prisma.student.upsert({
-      where: { id: existing?.id ?? "not-found" },
-      update: {},
-      create: data,
-    });
+    const student = await upsertStudentByName(data);
+    students.push(student);
     console.log(`✓ Student: ${student.name}`);
   }
 
+  const reportTemplates = [
+    {
+      studentIndex: 0,
+      weekStart: new Date("2026-03-09T00:00:00.000Z"),
+      weekEnd: new Date("2026-03-13T23:59:59.000Z"),
+      classContent: "과거시제 복습, 독해 지문 2개, 핵심 단어 테스트",
+      homeworkStatus: "COMPLETE",
+      homeworkNote: "단어장 2회 반복 완료",
+      testScore: 88,
+      attitude: "GOOD",
+      understanding: "AVERAGE",
+      absenceStatus: "PRESENT",
+      makeupClassStatus: "NOT_NEEDED",
+      nextPlan: "다음 주에는 문장 확장 작문을 집중 훈련합니다.",
+      teacherKeywords: "친절한 톤, 성장 중심 피드백",
+      parentReportText: "이번 주에는 과거시제와 독해를 중심으로 안정적으로 학습했습니다.",
+      internalMemoText: "- Tense review solid\n- Needs more writing drills",
+    },
+    {
+      studentIndex: 1,
+      weekStart: new Date("2026-03-09T00:00:00.000Z"),
+      weekEnd: new Date("2026-03-13T23:59:59.000Z"),
+      classContent: "문법 심화(관계대명사), 중등 독해 지문 분석",
+      homeworkStatus: "PARTIAL",
+      homeworkNote: "서술형 2문항 미완료",
+      testScore: 76,
+      attitude: "GOOD",
+      understanding: "GOOD",
+      absenceStatus: "PRESENT",
+      makeupClassStatus: "NOT_NEEDED",
+      nextPlan: "서술형 답안 구조 연습을 강화합니다.",
+      teacherKeywords: "구체적, 차분한",
+      parentReportText: "문법 이해도는 양호하며, 서술형 완성도를 높이는 단계입니다.",
+      internalMemoText: "- Strong grammar base\n- Follow up on written responses",
+    },
+  ];
+
+  for (const template of reportTemplates) {
+    const student = students[template.studentIndex];
+    if (!student) continue;
+
+    const exists = await prisma.report.findFirst({
+      where: {
+        studentId: student.id,
+        weekStart: template.weekStart,
+      },
+    });
+
+    if (exists) continue;
+
+    await prisma.report.create({
+      data: {
+        studentId: student.id,
+        userId: adminUser.id,
+        subject: student.subject,
+        weekStart: template.weekStart,
+        weekEnd: template.weekEnd,
+        classContent: template.classContent,
+        homeworkStatus: template.homeworkStatus,
+        homeworkNote: template.homeworkNote,
+        testScore: template.testScore,
+        attitude: template.attitude,
+        understanding: template.understanding,
+        absenceStatus: template.absenceStatus,
+        makeupClassStatus: template.makeupClassStatus,
+        nextPlan: template.nextPlan,
+        teacherKeywords: template.teacherKeywords,
+        parentReportText: template.parentReportText,
+        internalMemoText: template.internalMemoText,
+      },
+    });
+  }
+
+  console.log("✓ Demo reports seeded");
   console.log("✅ Seeding complete!");
 }
 

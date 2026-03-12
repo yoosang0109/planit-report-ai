@@ -6,12 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
-    "db:seed": "ts-node -O {\"module\":\"CommonJS\"} prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:seed": "ts-node -O '{\"module\":\"CommonJS\"}' prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint && npm run typecheck && npm run build",
+    "eval:prompts": "ts-node -O '{\"module\":\"CommonJS\"}' evals/scripts/prompt-smoke.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.10.2",
@@ -35,6 +38,6 @@
     "typescript": "^5"
   },
   "prisma": {
-    "seed": "ts-node -O {\"module\":\"CommonJS\"} prisma/seed.ts"
+    "seed": "ts-node -O '{\"module\":\"CommonJS\"}' prisma/seed.ts"
   }
 }

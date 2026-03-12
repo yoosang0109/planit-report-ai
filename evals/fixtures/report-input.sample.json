@@ -1,0 +1,15 @@
+{
+  "studentName": "김민준",
+  "subject": "영어",
+  "weekRange": "2026-03-09 ~ 2026-03-13",
+  "classContent": "과거시제 복습, 독해 지문 2개, 단어 테스트",
+  "homeworkStatus": "COMPLETE",
+  "homeworkNote": "단어 암기 100% 완료",
+  "testScore": 88,
+  "attitude": "GOOD",
+  "understanding": "AVERAGE",
+  "absenceStatus": "PRESENT",
+  "makeupClassStatus": "NOT_NEEDED",
+  "nextPlan": "다음 주에는 작문 훈련을 강화합니다.",
+  "teacherKeywords": "친절한 톤, 구체적 피드백"
+}

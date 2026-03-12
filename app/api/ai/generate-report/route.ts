@@ -1,6 +1,7 @@
 import { generateReport, AIGenerationError, type ReportInput } from "@/lib/ai/report-generator";
 import { successResponse, errorResponse, validationErrorResponse } from "@/lib/api-response";
 import { ZodError, z } from "zod";
+import { sanitizeErrorForLog } from "@/lib/safe-log";
 
 const schema = z.object({
   studentName: z.string().min(1),
@@ -27,10 +28,10 @@ export async function POST(request: Request) {
   } catch (err) {
     if (err instanceof ZodError) return validationErrorResponse(err);
     if (err instanceof AIGenerationError) {
-      console.error("[ai/generate-report] AI error:", err.cause ?? err.message);
+      console.error("[ai/generate-report] AI error:", sanitizeErrorForLog(err.cause ?? err.message));
       return errorResponse(err.message, 502);
     }
-    console.error("[ai/generate-report] Unexpected error:", err);
+    console.error("[ai/generate-report] Unexpected error:", sanitizeErrorForLog(err));
     return errorResponse("Internal server error", 500);
   }
 }
