@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { NewReportClient } from "@/features/reports/NewReportClient";
 
+export const dynamic = "force-dynamic";
+
 async function getStudents() {
   return prisma.student.findMany({
     where: { isActive: true },

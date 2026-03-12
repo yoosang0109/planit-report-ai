@@ -3,6 +3,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { StudentForm } from "@/features/students/StudentForm";
 
+export const dynamic = "force-dynamic";
+
 export default async function EditStudentPage({ params }: { params: { id: string } }) {
   const student = await prisma.student.findUnique({ where: { id: params.id } });
   if (!student) notFound();

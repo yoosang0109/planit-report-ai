@@ -2,6 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { StudentsListClient } from "@/features/students/StudentsListClient";
 
+export const dynamic = "force-dynamic";
+
 async function getStudents() {
   return prisma.student.findMany({
     where: { isActive: true },

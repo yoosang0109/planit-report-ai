@@ -47,6 +47,17 @@ interface PreviewState {
   internalMemoText: string;
 }
 
+type ToneStyle = "warm" | "professional" | "encouraging" | "calm" | "growth-focused";
+
+interface DuplicationCheck {
+  firstSentenceMaxSimilarity: number;
+  lastSentenceMaxSimilarity: number;
+  bannedExpressionsFound: string[];
+  repeatedPraiseWords: string[];
+  severe: boolean;
+  warnings: string[];
+}
+
 interface NewReportClientProps {
   students: Student[];
   preselectedStudentId?: string;
@@ -174,6 +185,7 @@ export function NewReportClient({ students, preselectedStudentId }: NewReportCli
         studentId: id,
         subject: student?.subject ?? prev.subject,
       }));
+      setDuplicationCheck(null);
     },
     [students]
   );
@@ -195,6 +207,9 @@ export function NewReportClient({ students, preselectedStudentId }: NewReportCli
   const [markingSent, setMarkingSent] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState<"parent" | "memo" | null>(null);
+  const [toneStyle, setToneStyle] = useState<ToneStyle | null>(null);
+  const [duplicationCheck, setDuplicationCheck] = useState<DuplicationCheck | null>(null);
+  const [rewriting, setRewriting] = useState(false);
 
   // ------ Validate minimum required fields ------
   const canSave = !!studentId && !!form.weekStart && !!form.weekEnd && form.classContent.trim().length > 0;
@@ -218,6 +233,7 @@ export function NewReportClient({ students, preselectedStudentId }: NewReportCli
       teacherKeywords: form.teacherKeywords || undefined,
       parentReportText: preview.parentReportText || undefined,
       internalMemoText: preview.internalMemoText || undefined,
+      toneStyle: toneStyle ?? undefined,
     };
   }
 
@@ -260,41 +276,76 @@ export function NewReportClient({ students, preselectedStudentId }: NewReportCli
     }
   }
 
-  async function handleGenerateAI() {
+  async function requestAI(mode: "generate" | "rewrite") {
     if (!selectedStudent || !form.classContent.trim()) return;
+
+    const weekRange = `${form.weekStart} ~ ${form.weekEnd}`;
+    const payload = {
+      mode,
+      studentId: selectedStudent.id,
+      studentName: selectedStudent.name,
+      subject: form.subject || selectedStudent.subject,
+      weekRange,
+      classContent: form.classContent,
+      homeworkStatus: form.homeworkStatus,
+      homeworkNote: form.homeworkNote || undefined,
+      testScore: form.testScore !== "" ? parseInt(form.testScore, 10) : null,
+      attitude: form.attitude,
+      understanding: form.understanding,
+      absenceStatus: form.absenceStatus,
+      makeupClassStatus: form.makeupClassStatus,
+      nextPlan: form.nextPlan || undefined,
+      teacherKeywords: form.teacherKeywords || undefined,
+      existingParentReport: mode === "rewrite" ? preview.parentReportText : undefined,
+      existingInternalMemo: mode === "rewrite" ? preview.internalMemoText : undefined,
+      currentToneStyle: mode === "rewrite" ? toneStyle ?? undefined : undefined,
+    };
+
+    const res = await fetch("/api/ai/generate-report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "Generation failed");
+
+    setPreview({
+      parentReportText: data.data.parentReport,
+      internalMemoText: data.data.internalMemo,
+    });
+    setToneStyle((data.data.toneStyle as ToneStyle | undefined) ?? null);
+    setDuplicationCheck((data.data.duplicationCheck as DuplicationCheck | undefined) ?? null);
+
+    return data.data;
+  }
+
+  async function handleGenerateAI() {
     setGenerating(true);
     try {
-      const weekRange = `${form.weekStart} ~ ${form.weekEnd}`;
-      const res = await fetch("/api/ai/generate-report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentName: selectedStudent.name,
-          subject: form.subject || selectedStudent.subject,
-          weekRange,
-          classContent: form.classContent,
-          homeworkStatus: form.homeworkStatus,
-          homeworkNote: form.homeworkNote || undefined,
-          testScore: form.testScore !== "" ? parseInt(form.testScore, 10) : null,
-          attitude: form.attitude,
-          understanding: form.understanding,
-          absenceStatus: form.absenceStatus,
-          makeupClassStatus: form.makeupClassStatus,
-          nextPlan: form.nextPlan || undefined,
-          teacherKeywords: form.teacherKeywords || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Generation failed");
-      setPreview({
-        parentReportText: data.data.parentReport,
-        internalMemoText: data.data.internalMemo,
-      });
-      toast("AI report generated ✨", "success");
+      const data = await requestAI("generate");
+      toast(`AI report generated ✨ (${data.toneStyle ?? "warm"})`, "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "AI generation failed", "error");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleRewriteExpressions() {
+    if (!preview.parentReportText.trim()) {
+      toast("먼저 리포트를 생성해 주세요.", "info");
+      return;
+    }
+
+    setRewriting(true);
+    try {
+      await requestAI("rewrite");
+      toast("표현을 재작성했습니다 ✍️", "success");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Rewrite failed", "error");
+    } finally {
+      setRewriting(false);
     }
   }
 
@@ -616,6 +667,7 @@ export function NewReportClient({ students, preselectedStudentId }: NewReportCli
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge isSent={isSent} />
+                {toneStyle && <span className="badge badge-gray text-[10px] uppercase">style: {toneStyle}</span>}
                 {savedReportId && (
                   <button
                     className="btn-secondary text-xs py-1.5 px-3"
@@ -648,6 +700,37 @@ export function NewReportClient({ students, preselectedStudentId }: NewReportCli
                 </>
               )}
             </button>
+
+            {duplicationCheck && (
+              <div className={`card p-4 border ${duplicationCheck.severe ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`badge text-xs ${duplicationCheck.severe ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                      {duplicationCheck.severe ? "중복 위험 높음" : "중복 주의"}
+                    </span>
+                    <span className="text-xs text-slate-600">첫 문장 유사도 {(duplicationCheck.firstSentenceMaxSimilarity * 100).toFixed(0)}%</span>
+                    <span className="text-xs text-slate-600">마지막 문장 유사도 {(duplicationCheck.lastSentenceMaxSimilarity * 100).toFixed(0)}%</span>
+                  </div>
+                  {duplicationCheck.severe && (
+                    <div className="flex items-center gap-2">
+                      <button className="btn-secondary text-xs py-1.5 px-3" onClick={handleGenerateAI} disabled={generating}>
+                        다시 생성
+                      </button>
+                      <button className="btn-ghost text-xs py-1.5 px-3" onClick={handleRewriteExpressions} disabled={rewriting}>
+                        {rewriting ? "재작성 중..." : "표현만 재작성"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {duplicationCheck.warnings.length > 0 && (
+                  <ul className="mt-2 list-disc list-inside text-xs text-slate-700 space-y-1">
+                    {duplicationCheck.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             {/* Parent Report */}
             <div className="card p-5 space-y-3">

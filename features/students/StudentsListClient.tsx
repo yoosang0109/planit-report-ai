@@ -129,7 +129,7 @@ export function StudentsListClient({ initialStudents }: { initialStudents: Stude
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Level</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Parent</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Reports</th>
-                <th className="px-4 py-3 w-32"></th>
+                <th className="px-4 py-3 w-44"></th>
               </tr>
             </thead>
             <tbody className={loading ? "opacity-50 pointer-events-none" : ""}>
@@ -162,6 +162,9 @@ export function StudentsListClient({ initialStudents }: { initialStudents: Stude
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5 justify-end">
+                      <Link href={`/reports/new?studentId=${student.id}`} className="btn-primary py-1 px-2.5 text-xs">
+                        Report
+                      </Link>
                       <Link href={`/students/${student.id}`} className="btn-secondary py-1 px-2.5 text-xs">
                         View
                       </Link>

@@ -108,3 +108,34 @@ planit-report-ai/
 - **Report Editor** — Edit AI output inline before sending
 - **Report History** — View, filter, copy, and manage all past reports
 - **Sent Status** — Toggle sent/not-sent state per report
+
+
+## Development Quality Gates
+
+Run these before opening a PR:
+
+```bash
+npm run lint
+npm run typecheck
+npm run eval:prompts
+npm run build
+```
+
+CI workflow: `.github/workflows/ci.yml` runs the same checks on push/PR.
+
+## Demo Data (Prisma Seed)
+
+```bash
+DATABASE_URL="file:./dev.db" npm run db:seed
+```
+
+Seed includes:
+- 1 admin user
+- 3 demo students
+- 2 demo weekly reports
+
+## Prompt & Eval Structure
+
+- Prompt definitions: `lib/ai/prompts.ts`
+- AI generation entrypoint: `lib/ai/report-generator.ts`
+- Prompt smoke eval: `evals/scripts/prompt-smoke.ts`

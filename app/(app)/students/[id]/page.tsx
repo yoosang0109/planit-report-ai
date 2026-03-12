@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { StudentDetailClient } from "@/features/students/StudentDetailClient";
 import { gradeLabel, levelLabel, toneLabel, LEVEL_COLORS } from "@/lib/display";
 
+export const dynamic = "force-dynamic";
+
 async function getStudent(id: string) {
   return prisma.student.findUnique({
     where: { id },

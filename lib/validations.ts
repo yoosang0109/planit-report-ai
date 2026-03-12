@@ -75,6 +75,7 @@ const gradeEnum = z.enum([
 
 const levelEnum = z.enum(["BEGINNER", "ELEMENTARY", "INTERMEDIATE", "UPPER_INTERMEDIATE", "ADVANCED"]);
 const toneEnum = z.enum(["FORMAL", "FRIENDLY", "ENCOURAGING", "DETAILED"]);
+const reportToneStyleEnum = z.enum(["warm", "professional", "encouraging", "calm", "growth-focused"]);
 
 export const createStudentSchema = z.object({
   name: z.string().min(1, "이름은 필수입니다 (Name is required)"),
@@ -112,6 +113,7 @@ export const createReportSchema = z.object({
   teacherKeywords: z.string().optional(),
   parentReportText: z.string().optional(),
   internalMemoText: z.string().optional(),
+  toneStyle: reportToneStyleEnum.optional().default("warm"),
 });
 
 export const updateReportSchema = createReportSchema.partial().extend({
@@ -123,6 +125,7 @@ export const updateReportSchema = createReportSchema.partial().extend({
 export const generateReportSchema = z.object({
   reportId: z.string().min(1),
   type: z.enum(["PARENT_KOREAN", "TEACHER_NOTES"]),
+  preferredToneStyle: reportToneStyleEnum.optional(),
 });
 
 // ---------------------------------------------------------------------------
