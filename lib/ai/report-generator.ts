@@ -3,6 +3,7 @@ import type { PreviousReportContext, ReportInput, ReportOutput, ToneStyle } from
 import { TONE_STYLES } from "./types";
 import {
   buildParentSystemPrompt,
+  buildParentRewriteSystemPrompt,
   memoSystemPrompt,
   buildParentReportPrompt,
   buildMemoPrompt,
@@ -33,9 +34,7 @@ export function selectToneStyle(recentReports: PreviousReportContext[], preferre
     .filter((s): s is ToneStyle => TONE_STYLES.includes(s as ToneStyle));
 
   const candidates = TONE_STYLES.filter((style) => !recentStyles.slice(0, 2).includes(style));
-  if (candidates.length > 0) {
-    return candidates[0];
-  }
+  if (candidates.length > 0) return candidates[0];
 
   const fallbackIndex = recentStyles.length % TONE_STYLES.length;
   return TONE_STYLES[fallbackIndex] ?? "warm";
@@ -88,5 +87,36 @@ export async function generateReport(input: ReportInput, options?: GenerateRepor
       "AI generation failed. Please check your API key and try again.",
       err,
     );
+  }
+}
+
+export async function rewriteParentReportExpressions(
+  existingParentReport: string,
+  recentReports: PreviousReportContext[],
+  toneStyle: ToneStyle,
+): Promise<string> {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+  try {
+    const result = await openai.chat.completions.create({
+      model: "gpt-4o",
+      temperature: 0.78,
+      max_tokens: 900,
+      messages: [
+        { role: "system", content: buildParentRewriteSystemPrompt(toneStyle, recentReports) },
+        {
+          role: "user",
+          content: `아래 리포트의 사실은 유지하고 표현만 바꿔 다시 작성해 주세요.\n\n${existingParentReport}`,
+        },
+      ],
+    });
+
+    const rewritten = result.choices[0]?.message?.content?.trim() ?? "";
+    if (!rewritten) throw new AIGenerationError("AI returned empty rewrite content.");
+
+    return rewritten;
+  } catch (err) {
+    if (err instanceof AIGenerationError) throw err;
+    throw new AIGenerationError("AI rewrite failed. Please try again.", err);
   }
 }

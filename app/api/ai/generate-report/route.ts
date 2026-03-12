@@ -1,10 +1,21 @@
-import { generateReport, AIGenerationError, type ReportInput, type PreviousReportContext } from "@/lib/ai/report-generator";
+import {
+  generateReport,
+  rewriteParentReportExpressions,
+  AIGenerationError,
+  type ReportInput,
+  type PreviousReportContext,
+  type ToneStyle,
+} from "@/lib/ai/report-generator";
 import { successResponse, errorResponse, validationErrorResponse } from "@/lib/api-response";
 import { ZodError, z } from "zod";
 import { sanitizeErrorForLog } from "@/lib/safe-log";
 import { prisma } from "@/lib/prisma";
+import { checkParentReportDuplication } from "@/lib/ai/duplication-check";
+
+const toneStyleSchema = z.enum(["warm", "professional", "encouraging", "calm", "growth-focused"]);
 
 const schema = z.object({
+  mode: z.enum(["generate", "rewrite"]).optional().default("generate"),
   studentId: z.string().min(1).optional(),
   studentName: z.string().min(1),
   subject: z.string().min(1),
@@ -19,7 +30,10 @@ const schema = z.object({
   makeupClassStatus: z.enum(["NOT_NEEDED", "SCHEDULED", "COMPLETED", "SKIPPED"]),
   nextPlan: z.string().optional(),
   teacherKeywords: z.string().optional(),
-  preferredToneStyle: z.enum(["warm", "professional", "encouraging", "calm", "growth-focused"]).optional(),
+  preferredToneStyle: toneStyleSchema.optional(),
+  existingParentReport: z.string().optional(),
+  existingInternalMemo: z.string().optional(),
+  currentToneStyle: toneStyleSchema.optional(),
 });
 
 function extractSentence(text: string | null | undefined, which: "first" | "last"): string | null {
@@ -64,6 +78,22 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const parsed = schema.parse(body);
+    const recentReports = await loadRecentReports(parsed.studentId);
+
+    if (parsed.mode === "rewrite") {
+      if (!parsed.existingParentReport) return errorResponse("existingParentReport is required for rewrite mode", 400);
+      const toneStyle = (parsed.currentToneStyle ?? parsed.preferredToneStyle ?? "warm") as ToneStyle;
+      const rewrittenParent = await rewriteParentReportExpressions(parsed.existingParentReport, recentReports, toneStyle);
+      const duplicationCheck = checkParentReportDuplication(rewrittenParent, recentReports);
+
+      return successResponse({
+        parentReport: rewrittenParent,
+        internalMemo: parsed.existingInternalMemo ?? "",
+        toneStyle,
+        duplicationCheck,
+        mode: "rewrite",
+      });
+    }
 
     const input: ReportInput = {
       studentName: parsed.studentName,
@@ -81,14 +111,18 @@ export async function POST(request: Request) {
       teacherKeywords: parsed.teacherKeywords,
     };
 
-    const recentReports = await loadRecentReports(parsed.studentId);
-
     const result = await generateReport(input, {
       preferredToneStyle: parsed.preferredToneStyle,
       recentReports,
     });
 
-    return successResponse(result);
+    const duplicationCheck = checkParentReportDuplication(result.parentReport, recentReports);
+
+    return successResponse({
+      ...result,
+      duplicationCheck,
+      mode: "generate",
+    });
   } catch (err) {
     if (err instanceof ZodError) return validationErrorResponse(err);
     if (err instanceof AIGenerationError) {

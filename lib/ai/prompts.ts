@@ -137,6 +137,16 @@ export function buildParentReportPrompt(input: ReportInput): string {
   return lines.join("\n");
 }
 
+
+export function buildParentRewriteSystemPrompt(toneStyle: ToneStyle, recentReports: PreviousReportContext[]): string {
+  return `${buildParentSystemPrompt(toneStyle, recentReports)}
+
+Rewrite-only mode rules:
+- You will receive an already generated parent report text.
+- Keep all facts, scores, and structure (4 paragraphs) the same.
+- Rewrite wording and sentence flow only to reduce repetition.
+- Do not shorten to fewer than 4 paragraphs.`;
+}
 export function buildMemoPrompt(input: ReportInput): string {
   const lines: string[] = [
     `Student: ${input.studentName} | Subject: ${input.subject} | Week: ${input.weekRange}`,
